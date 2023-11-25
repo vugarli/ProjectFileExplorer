@@ -6,35 +6,79 @@ using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Input;
+using System.Windows;
+using System.Windows.Controls;
+using FileExplorer.Core.Models;
+using FileExplorer.Views;
 
 namespace FileExplorer.ViewModels
 {
-    class ShellViewModel : Screen
+    class ShellViewModel : Conductor<object>
     {
         
-        public ShellViewModel(Test t)
+        public ICommand commandBack;
+        public ShellViewModel()
         {
-			var a = t.name;
         }
-        private string _path;
+        protected override void OnViewReady(object view)
+        {
+            base.OnViewReady(view);
+
+            ShellView shellView = (ShellView)view;
+            
+            shellView.CommandBindings.Add(new CommandBinding(ApplicationCommands.Open,test));
+        }
+        
+
+        private string _path = "C:/";
 
 		public string Path
 		{
 			get { return _path; }
 			set 
 			{ 
-				Files.Clear();
 				_path = value;
-				if(Directory.Exists(value))
-				{
-					Files.AddRange(new DirectoryInfo(value).GetDirectories("*").Select(d=>d.Name.ToString()));
-				}
+                NotifyOfPropertyChange(() => Path);
 			}
 		}
 
-		public BindableCollection<string> Files { get; set; } = new();
+		public List<ItemInfo> Files { get; set; } = new();
 
-		
+        public void OnKeyDownHandler(KeyEventArgs e)
+        {
+                Submit();
+        }
 
-	}
+        public void test(object sender, ExecutedRoutedEventArgs e)
+        {
+            var a = "a";
+        }
+
+        public void Submit()
+		{
+            if (Directory.Exists(Path))
+            {
+                Files.Clear();
+                Files.AddRange(
+                    new DirectoryInfo(Path).GetFiles("*")
+                    .Select(d => new ItemInfo(d.Name,d.CreationTime,"file",true,(int)d.Length,d.FullName))
+                );
+                Files.AddRange(
+                    new DirectoryInfo(Path).GetDirectories("*")
+                    .Select(d => new ItemInfo(d.Name, d.CreationTime, "file", true, -1, d.FullName))
+                );
+                var model = new FilesListViewModel(Files);
+                ActiveItem = model;
+            }
+        }
+
+        public void ItemClicked(ItemInfo itemInfo)
+        {
+            Path = itemInfo.Path;
+            Submit();
+        }
+
+
+    }
 }

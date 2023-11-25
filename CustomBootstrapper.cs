@@ -5,15 +5,17 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Xml.Linq;
 
 namespace FileExplorer
 {
-    public record Test(string name = "Vugar");
+    public record Test(string name);
 
-    public class Bootstrapper : BootstrapperBase
+    public class CustomBootstrapper : BootstrapperBase
     {
         private SimpleContainer _container = new SimpleContainer();
 
@@ -34,12 +36,24 @@ namespace FileExplorer
 
         protected override void Configure()
         {
+
             _container.Instance(_container);
-            _container.Singleton<Test>();
-            _container.RegisterPerRequest(typeof(ShellViewModel), null, typeof(ShellViewModel));
+            _container
+              .Singleton<IWindowManager, WindowManager>()
+              .Singleton<IEventAggregator, EventAggregator>();
+
+            foreach (var assembly in SelectAssemblies())
+            {
+                assembly.GetTypes()
+               .Where(type => type.IsClass)
+               .Where(type => type.Name.EndsWith("ViewModel"))
+               .ToList()
+               .ForEach(viewModelType => _container.RegisterPerRequest(
+                   viewModelType, viewModelType.ToString(), viewModelType));
+            }
         }
 
-        public Bootstrapper()
+        public CustomBootstrapper()
         {
             Initialize();
         }
